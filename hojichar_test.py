@@ -145,7 +145,7 @@ def main():
                         token=token
                         )        
         input_ex_file = input_dir + '/ja_meta/' + zst_file_name
-        jsonl_file = input_dir + '/' + os.path.splitext(input_ex_file)[0]
+        jsonl_file = os.path.splitext(input_ex_file)[0]
         extract_zst_file(input_ex_file, jsonl_file)
         output_file = f'{output_dir}/{i}.jsonl'
 
