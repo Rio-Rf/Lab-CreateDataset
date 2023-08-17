@@ -66,14 +66,16 @@ class Debug(Filter):
         print('**'*40)
         return document
 
-def open_zst_file(file_name):
+def extract_zst_file(input_file, output_file):
     import zstandard as zstd
-    with open(file_name, "rb") as f:
-        data = f.read()
-    dctx = zstd.ZstdDecompressor()
-    decompressed = dctx.decompress(data)
-    return decompressed
-
+    with open(input_file, 'rb') as compressed_file:
+        decompressor = zstd.ZstdDecompressor()
+        with decompressor.stream_reader(compressed_file) as reader, open(output_file, 'wb') as output:
+            while True:
+                chunk = reader.read(16384)  # 16K chunks
+                if not chunk:
+                    break
+                output.write(chunk)
 
 def clean(input_file, output_file):
     key = 'text'
@@ -95,7 +97,7 @@ def clean(input_file, output_file):
     ])
     
 
-    input_doc_iter = [OscarDocument(line) for line in open_zst_file(input_file)]
+    input_doc_iter = [OscarDocument(line) for line in open(input_file)]
     with Parallel(cleaner, num_jobs=10) as pfilter:
         out_doc_iter = pfilter.imap_apply(input_doc_iter)
         with open(before_debup_file, "w") as fp:
@@ -142,11 +144,14 @@ def main():
                         repo_type="dataset",
                         token=token
                         )        
-        input_ex_file = input_dir + '/ja_meta/' + zst_file_name        
+        input_ex_file = input_dir + '/ja_meta/' + zst_file_name
+        jsonl_file = input_dir + '/' + os.path.splitext(input_ex_file)[0]
+        extract_zst_file(input_ex_file, jsonl_file)
         output_file = f'{output_dir}/{i}.jsonl'
-        print('input...', input_ex_file)
+
+        print('input...', jsonl_file)
         print('output...', output_file)
-        clean(input_ex_file, output_file)
+        clean(jsonl_file, output_file)
 
 if __name__ == '__main__':
     main()
