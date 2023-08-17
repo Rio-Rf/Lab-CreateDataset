@@ -119,7 +119,7 @@ def clean(input_file, output_file):
 def main():
     input_dir = './data'
     output_dir = './output'
-    token = os.environ.get('HF_TOKEN')
+    token = os.environ['HF_TOKEN']
     end = 119
     end = 2
 
