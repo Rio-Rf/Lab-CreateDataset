@@ -1,7 +1,5 @@
 import json
-import argparse
 from typing import Any
-import requests
 import os
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
@@ -137,8 +135,8 @@ def main():
                         token=token
                         )
         jsonl_file_name = os.path.splitext(zst_file_name)[0]
-        input_ex_file = input_dir + '/' + zst_file_name
-        jsonl_file = input_dir + '/' + jsonl_file_name
+        input_ex_file = input_dir + '/js_meta/' + zst_file_name
+        jsonl_file = input_dir + '/jsonl/' + jsonl_file_name
         extract_zst(input_ex_file, input_ex_file)
         output_file = f'{output_dir}/{i}.jsonl'
         print('input...', jsonl_file)
