@@ -1,4 +1,6 @@
 # readme
+hojicharをoscarに対して動かしてみたサンプル
+
 https://github.com/HojiChar/HojiChar
 
 ## run
