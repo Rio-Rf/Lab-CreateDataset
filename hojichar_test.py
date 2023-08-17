@@ -94,6 +94,9 @@ def main():
         document_filters.AcceptJapanese(),
         FilterByQualityWarnings(),
         SpaceFilter(),
+        document_filters.NgWordsFilterJa(dict_path='./ng_word.txt'),
+        document_filters.DiscardBBSComments(),
+        document_filters.DiscardAds(),
         document_filters.DocumentNormalizer(),
         document_filters.MaskPersonalInformation(),
         document_filters.JSONDumper()
