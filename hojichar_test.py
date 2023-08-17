@@ -10,6 +10,8 @@ from hojichar.core.filter_interface import Filter
 
 from huggingface_hub import hf_hub_download
 
+from extract_zst import extract_zst
+
 
 class OscarDocument(Document):
       def __init__(self, *args, **kwargs):
@@ -126,19 +128,22 @@ def main():
     for i in range(1, end):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
         print('get...', url)
-        filename=os.path.basename(url)
-        input_file = input_dir + '/' + filename        
+        zst_file_name=os.path.basename(url)        
         hf_hub_download(repo_id='oscar-corpus/OSCAR-2301',
                         subfolder='ja_meta',
                         local_dir=input_dir,
-                        filename=filename,
+                        filename=zst_file_name,
                         repo_type="dataset",
                         token=token
                         )
+        jsonl_file_name = os.path.splitext(zst_file_name)[0]
+        input_ex_file = input_dir + '/' + zst_file_name
+        jsonl_file = input_dir + '/' + jsonl_file_name
+        extract_zst(input_ex_file, input_ex_file)
         output_file = f'{output_dir}/{i}.jsonl'
-        print('input...', input_file)
+        print('input...', jsonl_file)
         print('output...', output_file)
-        clean(input_file, output_file)
+        clean(jsonl_file, output_file)
 
 if __name__ == '__main__':
     main()
