@@ -114,7 +114,7 @@ def clean(input_file, output_file):
     
 
     input_doc_iter = [OscarDocument(line) for line in open(input_file)]
-    input_doc_iter = input_doc_iter[:10000]
+    input_doc_iter = input_doc_iter
     print('raw data len ', len(input_doc_iter))
     print('-- start clean --')
     t = tqdm(total=len(input_doc_iter))
@@ -164,8 +164,6 @@ def main():
     token = os.environ['HF_TOKEN']
     start = 1
     end = 119
-    start = 2
-    end = 3
 
     for i in range(start, end):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
