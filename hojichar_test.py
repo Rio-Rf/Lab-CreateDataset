@@ -8,8 +8,6 @@ from hojichar.core.filter_interface import Filter
 
 from huggingface_hub import hf_hub_download
 
-from extract_zst import extract_zst
-
 
 class OscarDocument(Document):
       def __init__(self, *args, **kwargs):
@@ -68,6 +66,15 @@ class Debug(Filter):
         print('**'*40)
         return document
 
+def open_zst_file(file_name):
+    import zstandard as zstd
+    with open(file_name, "rb") as f:
+        data = f.read()
+    dctx = zstd.ZstdDecompressor()
+    decompressed = dctx.decompress(data)
+    return decompressed
+
+
 def clean(input_file, output_file):
     key = 'text'
     key = 'content'
@@ -87,7 +94,8 @@ def clean(input_file, output_file):
         document_filters.JSONDumper()
     ])
     
-    input_doc_iter = [OscarDocument(line) for line in open(input_file)]
+
+    input_doc_iter = [OscarDocument(line) for line in open_zst_file(input_file)]
     with Parallel(cleaner, num_jobs=10) as pfilter:
         out_doc_iter = pfilter.imap_apply(input_doc_iter)
         with open(before_debup_file, "w") as fp:
@@ -133,15 +141,12 @@ def main():
                         filename=zst_file_name,
                         repo_type="dataset",
                         token=token
-                        )
-        jsonl_file_name = os.path.splitext(zst_file_name)[0]
-        input_ex_file = input_dir + '/ja_meta/' + zst_file_name
-        jsonl_file = input_dir + '/jsonl/' + jsonl_file_name
-        extract_zst(input_ex_file, input_ex_file)
+                        )        
+        input_ex_file = input_dir + '/ja_meta/' + zst_file_name        
         output_file = f'{output_dir}/{i}.jsonl'
-        print('input...', jsonl_file)
+        print('input...', input_ex_file)
         print('output...', output_file)
-        clean(jsonl_file, output_file)
+        clean(input_ex_file, output_file)
 
 if __name__ == '__main__':
     main()
