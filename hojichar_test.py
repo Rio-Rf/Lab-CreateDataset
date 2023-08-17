@@ -9,7 +9,7 @@ from hojichar.filters.document_filters import JSONLoader
 from hojichar.core.filter_interface import Filter
 
 from huggingface_hub import hf_hub_download
-
+import time
 
 class OscarDocument(Document):
       def __init__(self, *args, **kwargs):
@@ -33,9 +33,12 @@ class FilterByQualityWarnings(Filter):
         super().__init__(*args, **kwargs)
         self.quality_key='quality_warnings'
 
-    def apply(self, doc: OscarDocument):        
+    def apply(self, doc: OscarDocument):
+        if not self.quality_key in doc.metadata:
+            return doc
         quality = doc.metadata[self.quality_key]
-        # print('quality', quality)
+        if quality is None:
+            return doc
         if 'header' in quality or 'footer' in quality or 'noisy' in quality:
             doc.is_rejected = True
         return doc    
@@ -64,17 +67,26 @@ class OscarJSONLoader(JSONLoader):
 
 class Debug(Filter):
     def apply(self, document):
-        print(document)
+        # print(document)
         print('**'*40)
         return document
 
+class Timer(Filter):
+    def __init__(self, start, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.start = start
+
+    def apply(self, document):
+        print('time: ', time.time() - self.start)
+        return document
+    
 def extract_zst_file(input_file, output_file):
     import zstandard as zstd
     with open(input_file, 'rb') as compressed_file:
         decompressor = zstd.ZstdDecompressor()
         with decompressor.stream_reader(compressed_file) as reader, open(output_file, 'wb') as output:
             while True:
-                chunk = reader.read(16384)  # 16K chunks
+                chunk = reader.read(16384)
                 if not chunk:
                     break
                 output.write(chunk)
@@ -82,10 +94,11 @@ def extract_zst_file(input_file, output_file):
 def clean(input_file, output_file):
     key = 'text'
     key = 'content'
-    before_debup_file = './before_debup.jsonl'
+    before_debup_file = './data/before_debup.jsonl'
+    num_jobs=10
 
     cleaner = Compose([
-        OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),        
+        OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),
         document_filters.DocumentLengthFilter(min_doc_len=100, max_doc_len=50000),
         document_filters.AcceptJapanese(),
         FilterByQualityWarnings(),
@@ -100,10 +113,12 @@ def clean(input_file, output_file):
     
 
     input_doc_iter = [OscarDocument(line) for line in open(input_file)]
-    print('data len ', len(input_doc_iter))
-    with Parallel(cleaner, num_jobs=10) as pfilter:        
-        out_doc_iter = pfilter.imap_apply(input_doc_iter)
-        t = tqdm(total=len(input_doc_iter))
+    input_doc_iter = input_doc_iter
+    print('raw data len ', len(input_doc_iter))
+    print('-- start clean --')
+    t = tqdm(total=len(input_doc_iter))
+    with Parallel(cleaner, num_jobs=num_jobs) as pfilter:
+        out_doc_iter = pfilter.imap_apply(input_doc_iter)        
         with open(before_debup_file, "w") as fp:
             for doc in out_doc_iter:
                 if not doc.is_rejected:
@@ -112,7 +127,8 @@ def clean(input_file, output_file):
                 t.update(1)
         t.close()
 
-    ## dedupは並列でできなそう
+    ## --- dedup ---
+    print('-- start dedup--')
     cleaner = Compose([
         JSONLoader(key='text'),
         # Debug(),
@@ -123,23 +139,34 @@ def clean(input_file, output_file):
         ),
         document_filters.JSONDumper()
     ])
-    results = []
-    for line in open(before_debup_file):
-        a = cleaner(line)        
-        results.append(a)
-        
+
+    with open(before_debup_file) as fp:
+        lines = fp.readlines()
+    
+    print('cleaned len', len(lines))
+    t = tqdm(total=len(lines))
+    cnter = 0
     with open(output_file, "w") as fp:
-        for doc in results:            
-            fp.write(doc + "\n")
+        for line in lines:
+            result = cleaner(line)
+            t.update(1)
+            if result == "":
+                continue
+            fp.write(result + "\n")
+            cnter += 1
+    t.close()
+    print('dedup len', cnter)
 
 def main():
     input_dir = './data'
     output_dir = './output'
     token = os.environ['HF_TOKEN']
+    start = 1
     end = 119
-    end = 2
+    start = 2
+    end = 3
 
-    for i in range(1, end):
+    for i in range(start, end):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
         print('get...', url)
         zst_file_name=os.path.basename(url)        
