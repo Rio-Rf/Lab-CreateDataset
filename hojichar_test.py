@@ -1,6 +1,8 @@
 import json
 from typing import Any
 import os
+from tqdm import tqdm
+
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
 from hojichar.filters.document_filters import JSONLoader
@@ -98,18 +100,22 @@ def clean(input_file, output_file):
     
 
     input_doc_iter = [OscarDocument(line) for line in open(input_file)]
-    with Parallel(cleaner, num_jobs=10) as pfilter:
+    print('data len ', len(input_doc_iter))
+    with Parallel(cleaner, num_jobs=10) as pfilter:        
         out_doc_iter = pfilter.imap_apply(input_doc_iter)
+        t = tqdm(total=len(input_doc_iter))
         with open(before_debup_file, "w") as fp:
             for doc in out_doc_iter:
                 if not doc.is_rejected:
-                   # print(doc.text)
-                   fp.write(doc.text + "\n")
+                    # print(doc.text)
+                    fp.write(doc.text + "\n")
+                t.update(1)
+        t.close()
 
-
+    ## dedupは並列でできなそう
     cleaner = Compose([
         JSONLoader(key='text'),
-        Debug(),
+        # Debug(),
         deduplication.GenerateDedupLSH(),
         deduplication.LSHDeduplicator(
             online_dedup=True,        
@@ -143,7 +149,7 @@ def main():
                         filename=zst_file_name,
                         repo_type="dataset",
                         token=token
-                        )        
+                        )
         input_ex_file = input_dir + '/ja_meta/' + zst_file_name
         jsonl_file = os.path.splitext(input_ex_file)[0]
         extract_zst_file(input_ex_file, jsonl_file)
