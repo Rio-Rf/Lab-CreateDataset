@@ -163,8 +163,6 @@ def main():
     token = os.environ['HF_TOKEN']
     start = 1
     end = 119
-    start = 2
-    end = 3
 
     for i in range(start, end):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
