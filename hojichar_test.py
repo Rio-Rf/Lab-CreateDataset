@@ -119,7 +119,7 @@ def clean(input_file, output_file):
 def main():
     input_dir = './data'
     output_dir = './output'
-
+    token = os.environ.get('HF_TOKEN')
     end = 119
     end = 2
 
@@ -132,7 +132,9 @@ def main():
                         subfolder='ja_meta',
                         local_dir=input_dir,
                         filename=filename,
-                        repo_type="dataset")
+                        repo_type="dataset",
+                        token=token
+                        )
         output_file = f'{output_dir}/{i}.jsonl'
         print('input...', input_file)
         print('output...', output_file)
