@@ -1,6 +1,8 @@
 import json
 import argparse
 from typing import Any
+import requests
+import os
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
 from hojichar.filters.document_filters import JSONLoader
@@ -64,26 +66,7 @@ class Debug(Filter):
         print('**'*40)
         return document
 
-def get_args():
-    parser = argparse.ArgumentParser()    
-    parser.add_argument(
-        "--input_file",
-        type=str,
-        required=True,
-        help="Path to input jsonl files or lmd archive(s) - if using multiple archives, put them in a comma separated "
-        "list",
-    )    
-    parser.add_argument(
-        "--workers", type=int, default=1, help="Number of worker processes to launch"
-    )
-    parser.add_argument(
-        "--output_file", type=str, help="", required=True
-    )
-    args = parser.parse_args()
-    return args
-
-def main():
-    args = get_args()
+def clean(input_file, output_file):
     key = 'text'
     key = 'content'
     before_debup_file = './before_debup.jsonl'
@@ -102,11 +85,11 @@ def main():
         document_filters.JSONDumper()
     ])
     
-    input_doc_iter = [OscarDocument(line) for line in open(args.input_file)]    
+    input_doc_iter = [OscarDocument(line) for line in open(input_file)]
     with Parallel(cleaner, num_jobs=10) as pfilter:
         out_doc_iter = pfilter.imap_apply(input_doc_iter)
         with open(before_debup_file, "w") as fp:
-            for doc in out_doc_iter:           
+            for doc in out_doc_iter:
                 if not doc.is_rejected:
                    # print(doc.text)
                    fp.write(doc.text + "\n")
@@ -127,9 +110,29 @@ def main():
         a = cleaner(line)        
         results.append(a)
         
-    with open(args.output_file, "w") as fp:
+    with open(output_file, "w") as fp:
         for doc in results:            
             fp.write(doc + "\n")
+
+def main():
+    input_dir = './data'
+    output_dir = './output'
+
+    end = 119
+    end = 2
+
+    for i in range(1, end):
+        url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
+        print('get...', url)
+        filename=os.path.basename(url)
+        input_file = input_dir + '/' + filename
+        urlData = requests.get(url).content
+        with open(input_file ,mode='wb') as f:
+            f.write(urlData)
+        output_file = f'{output_dir}/{i}.jsonl'
+        print('input...', input_file)
+        print('output...', output_file)
+        clean(input_file, output_file)
 
 if __name__ == '__main__':
     main()
