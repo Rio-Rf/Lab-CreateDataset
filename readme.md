@@ -1,13 +1,27 @@
 # readme
+https://github.com/HojiChar/HojiChar
 
 ## run
 
+oscarの認証用に環境変数を設定しておく (colab用)
+`%env HF_TOKEN=`
+
+
 ```
-python hojichar_test.py --input {input_file} --output {output_file}
+python hojichar_test.py
 ```
 
-input_fileはjsonl形式
-oscarのデータでは、以下の用にcontentに本文が入る形
+`https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst`をダウンロード
+iは 1から119まで
+
+`./data` 以下にダウンロードしたzst、解凍後のjsonlが保存される
+`./output` 以下に処理されたファイルが保存される
+
+
+
+
+## format
+oscarのデータでは、以下の用にcontentに本文が入る
 
 ```json
 {
