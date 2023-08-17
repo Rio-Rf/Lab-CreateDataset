@@ -94,8 +94,9 @@ def extract_zst_file(input_file, output_file):
 def clean(input_file, output_file):
     key = 'text'
     key = 'content'
-    before_debup_file = './data/before_debup.jsonl'
-    num_jobs=10
+    # before_debup_file = './data/before_debup.jsonl'
+    before_debup_file = output_file
+    num_jobs=20
 
     cleaner = Compose([
         OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),
@@ -113,13 +114,13 @@ def clean(input_file, output_file):
     
 
     input_doc_iter = [OscarDocument(line) for line in open(input_file)]
-    input_doc_iter = input_doc_iter
+    input_doc_iter = input_doc_iter[:10000]
     print('raw data len ', len(input_doc_iter))
     print('-- start clean --')
     t = tqdm(total=len(input_doc_iter))
     with Parallel(cleaner, num_jobs=num_jobs) as pfilter:
-        out_doc_iter = pfilter.imap_apply(input_doc_iter)        
-        with open(before_debup_file, "w") as fp:
+        out_doc_iter = pfilter.imap_apply(input_doc_iter)
+        with open(before_debup_file, "w") as fp:            
             for doc in out_doc_iter:
                 if not doc.is_rejected:
                     # print(doc.text)
@@ -127,35 +128,35 @@ def clean(input_file, output_file):
                 t.update(1)
         t.close()
 
-    ## --- dedup ---
-    print('-- start dedup--')
-    cleaner = Compose([
-        JSONLoader(key='text'),
-        # Debug(),
-        deduplication.GenerateDedupLSH(),
-        deduplication.LSHDeduplicator(
-            online_dedup=True,        
-            store_blacklist=True
-        ),
-        document_filters.JSONDumper()
-    ])
+    # ## --- dedup ---
+    # print('-- start dedup--')
+    # cleaner = Compose([
+    #     JSONLoader(key='text'),
+    #     # Debug(),
+    #     deduplication.GenerateDedupLSH(),
+    #     deduplication.LSHDeduplicator(
+    #         online_dedup=True,        
+    #         store_blacklist=True
+    #     ),
+    #     document_filters.JSONDumper()
+    # ])
 
-    with open(before_debup_file) as fp:
-        lines = fp.readlines()
+    # with open(before_debup_file) as fp:
+    #     lines = fp.readlines()
     
-    print('cleaned len', len(lines))
-    t = tqdm(total=len(lines))
-    cnter = 0
-    with open(output_file, "w") as fp:
-        for line in lines:
-            result = cleaner(line)
-            t.update(1)
-            if result == "":
-                continue
-            fp.write(result + "\n")
-            cnter += 1
-    t.close()
-    print('dedup len', cnter)
+    # print('cleaned len', len(lines))
+    # t = tqdm(total=len(lines))
+    # cnter = 0
+    # with open(output_file, "w") as fp:
+    #     for line in lines:
+    #         result = cleaner(line)
+    #         t.update(1)
+    #         if result == "":
+    #             continue
+    #         fp.write(result + "\n")
+    #         cnter += 1
+    # t.close()
+    # print('dedup len', cnter)
 
 def main():
     input_dir = './data'
@@ -163,6 +164,8 @@ def main():
     token = os.environ['HF_TOKEN']
     start = 1
     end = 119
+    start = 2
+    end = 3
 
     for i in range(start, end):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
