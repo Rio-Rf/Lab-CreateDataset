@@ -8,6 +8,8 @@ from hojichar import Compose, document_filters, deduplication, Parallel, Documen
 from hojichar.filters.document_filters import JSONLoader
 from hojichar.core.filter_interface import Filter
 
+from huggingface_hub import hf_hub_download
+
 
 class OscarDocument(Document):
       def __init__(self, *args, **kwargs):
@@ -125,10 +127,12 @@ def main():
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
         print('get...', url)
         filename=os.path.basename(url)
-        input_file = input_dir + '/' + filename
-        urlData = requests.get(url).content
-        with open(input_file ,mode='wb') as f:
-            f.write(urlData)
+        input_file = input_dir + '/' + filename        
+        hf_hub_download(repo_id='oscar-corpus/OSCAR-2301',
+                        subfolder='ja_meta',
+                        local_dir=input_dir,
+                        filename=filename,
+                        repo_type="dataset")
         output_file = f'{output_dir}/{i}.jsonl'
         print('input...', input_file)
         print('output...', output_file)
