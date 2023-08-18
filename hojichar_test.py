@@ -146,8 +146,9 @@ def clean(input_file, output_file, num_jobs=10):
         document_filters.JSONDumper()
     ])
     
-
-    input_doc_iter = [OscarDocument(line) for line in open(input_file)]
+    with open(input_file) as fp:
+        lines = fp.readlines()
+    input_doc_iter = [OscarDocument(line) for line in lines]
     input_doc_iter = input_doc_iter
     print('raw data len ', len(input_doc_iter))
     print('-- start clean --')
@@ -200,7 +201,7 @@ def main():
     output_dir = sys.argv[-1]
     print('output_dir...', output_dir)
     token = os.environ['HF_TOKEN']
-    start = 2
+    start = 3
     end = 119
     num_jobs=20
     print('start...')
