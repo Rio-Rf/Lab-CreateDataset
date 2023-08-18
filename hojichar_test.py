@@ -1,6 +1,7 @@
 import json
-from typing import Any
 import os
+import sys
+from typing import Any
 from tqdm import tqdm
 import unicodedata
 
@@ -196,7 +197,9 @@ def clean(input_file, output_file):
 
 def main():
     input_dir = './data'
-    output_dir = './output'
+    # output_dir = './output'
+    output_dir = sys.argv[-1]
+    print('output_dir...', output_dir)
     token = os.environ['HF_TOKEN']
     start = 1
     end = 119
