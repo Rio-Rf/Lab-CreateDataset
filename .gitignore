@@ -1,1 +1,4 @@
 debup_black_list.txt
+.dataset_ja/
+models/
+data/
