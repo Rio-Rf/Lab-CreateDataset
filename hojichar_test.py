@@ -2,7 +2,7 @@ import json
 from typing import Any
 import os
 from tqdm import tqdm
-
+import unicodedata
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
 from hojichar.filters.document_filters import JSONLoader
@@ -41,7 +41,31 @@ class FilterByQualityWarnings(Filter):
             return doc
         if 'header' in quality or 'footer' in quality or 'noisy' in quality:
             doc.is_rejected = True
+            
         return doc    
+
+class PPLFilter(Filter):
+    def __init__(self, model_path, sp_model_path, ppl_th, *args: Any, **kwargs: Any) -> None:
+        import kenlm
+        import sentencepiece        
+
+        super().__init__(*args, **kwargs)
+        self.ppl_th = ppl_th
+        self.model = kenlm.LanguageModel(model_path)
+        self.sp = sentencepiece.SentencePieceProcessor()
+        self.sp.load(sp_model_path)
+
+    def apply(self, document):
+        text = document.text
+        text = unicodedata.normalize('NFD', text)
+        toks = self.sp.encode(text, out_type=str)
+        
+        sentence = " ".join(toks)
+        ppl = self.model.perplexity(sentence)
+        if ppl > self.ppl_th:
+            # print(ppl, document.text)
+            document.is_rejected = True
+        return document
 
 class OscarJSONLoader(JSONLoader):
     def __init__(self, metadata_keys = [], *args: Any, **kwargs: Any) -> None:
@@ -66,8 +90,14 @@ class OscarJSONLoader(JSONLoader):
         return document
 
 class Debug(Filter):
+    def __init__(self, idx = "", *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.idx = idx
+
     def apply(self, document):
-        # print(document)
+        print(self.idx)
+        print(document.text)
+        print(document.is_rejected)
         print('**'*40)
         return document
 
@@ -96,8 +126,7 @@ def clean(input_file, output_file):
     key = 'content'
     # before_debup_file = './data/before_debup.jsonl'
     before_debup_file = output_file
-    num_jobs=20
-
+    num_jobs=1
     cleaner = Compose([
         OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),
         document_filters.DocumentLengthFilter(min_doc_len=100, max_doc_len=50000),
@@ -109,6 +138,11 @@ def clean(input_file, output_file):
         document_filters.DiscardAds(),
         document_filters.DocumentNormalizer(),
         document_filters.MaskPersonalInformation(),
+        PPLFilter(
+                model_path='./models/ja.arpa.bin',
+                sp_model_path='./models/ja.sp.model',
+                ppl_th=90000
+        ),
         document_filters.JSONDumper()
     ])
     
@@ -117,17 +151,19 @@ def clean(input_file, output_file):
     input_doc_iter = input_doc_iter
     print('raw data len ', len(input_doc_iter))
     print('-- start clean --')
+    cnt = 0
     t = tqdm(total=len(input_doc_iter))
     with Parallel(cleaner, num_jobs=num_jobs) as pfilter:
         out_doc_iter = pfilter.imap_apply(input_doc_iter)
-        with open(before_debup_file, "w") as fp:            
+        with open(before_debup_file, "w") as fp:   
             for doc in out_doc_iter:
-                if not doc.is_rejected:
-                    # print(doc.text)
+                if not doc.is_rejected:                    
                     fp.write(doc.text + "\n")
+                    cnt += 1
                 t.update(1)
         t.close()
-
+    print(cnt)
+   
     # ## --- dedup ---
     # print('-- start dedup--')
     # cleaner = Compose([
@@ -184,6 +220,10 @@ def main():
         print('input...', jsonl_file)
         print('output...', output_file)
         clean(jsonl_file, output_file)
+  
+
+def test():
+    clean('./sample2.jsonl', 'sample_output.jsonl')
 
 if __name__ == '__main__':
     main()
