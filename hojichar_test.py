@@ -122,12 +122,11 @@ def extract_zst_file(input_file, output_file):
                     break
                 output.write(chunk)
 
-def clean(input_file, output_file):
+def clean(input_file, output_file, num_jobs=10):
     key = 'text'
     key = 'content'
     # before_debup_file = './data/before_debup.jsonl'
-    before_debup_file = output_file
-    num_jobs=1
+    before_debup_file = output_file    
     cleaner = Compose([
         OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),
         document_filters.DocumentLengthFilter(min_doc_len=100, max_doc_len=50000),
@@ -201,13 +200,18 @@ def main():
     output_dir = sys.argv[-1]
     print('output_dir...', output_dir)
     token = os.environ['HF_TOKEN']
-    start = 1
+    start = 2
     end = 119
+    num_jobs=20
+    print('start...')
+    print(f'start: {start}')
+    print(f'end: {end}')
+    print(f'num_jobs: {num_jobs}')
 
     for i in range(start, end):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
         print('get...', url)
-        zst_file_name=os.path.basename(url)        
+        zst_file_name=os.path.basename(url)
         hf_hub_download(repo_id='oscar-corpus/OSCAR-2301',
                         subfolder='ja_meta',
                         local_dir=input_dir,
@@ -222,7 +226,7 @@ def main():
 
         print('input...', jsonl_file)
         print('output...', output_file)
-        clean(jsonl_file, output_file)
+        clean(jsonl_file, output_file, num_jobs=num_jobs)
   
 
 def test():
