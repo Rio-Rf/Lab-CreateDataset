@@ -134,8 +134,8 @@ def read_yielder(input_file):
     cnt = 0
     with open(input_file) as fp:        
         for line in fp.readlines():
-            if cnt > 10000:
-                break
+            # if cnt > 10000:
+            #     break
             cnt += 1
             yield OscarDocument(line)
 
