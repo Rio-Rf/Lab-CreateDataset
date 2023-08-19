@@ -1,9 +1,12 @@
 import json
 import os
 import sys
+import gc
 from typing import Any
 from tqdm import tqdm
 import unicodedata
+import psutil
+
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
 from hojichar.filters.document_filters import JSONLoader
@@ -121,12 +124,40 @@ def extract_zst_file(input_file, output_file):
                 if not chunk:
                     break
                 output.write(chunk)
+                del chunk
+        del reader
+        del output
+    del compressed_file
+    gc.collect()
+
+def read_yielder(input_file):
+    cnt = 0
+    with open(input_file) as fp:        
+        for line in fp.readlines():
+            if cnt > 10000:
+                break
+            cnt += 1
+            yield OscarDocument(line)
+
+def show_diff_mem(num, start):
+    def format(size):
+        power = 2**10
+        n = 0
+        power_labels = {0 : '', 1: 'kilo', 2: 'mega', 3: 'giga', 4: 'tera'}
+        while size > power:
+            size /= power
+            n += 1
+        return size, power_labels[n]+'bytes'    
+    # print(num, format(psutil.virtual_memory().used - start))
+    print(num, format(psutil.virtual_memory().used))
 
 def clean(input_file, output_file, num_jobs=10):
     key = 'text'
     key = 'content'
     # before_debup_file = './data/before_debup.jsonl'
-    before_debup_file = output_file    
+    before_debup_file = output_file
+    start = psutil.virtual_memory().used
+
     cleaner = Compose([
         OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),
         document_filters.DocumentLengthFilter(min_doc_len=100, max_doc_len=50000),
@@ -146,25 +177,34 @@ def clean(input_file, output_file, num_jobs=10):
         document_filters.JSONDumper()
     ])
     
-    with open(input_file) as fp:
-        lines = fp.readlines()
-    input_doc_iter = [OscarDocument(line) for line in lines]
-    input_doc_iter = input_doc_iter
-    print('raw data len ', len(input_doc_iter))
     print('-- start clean --')
     cnt = 0
-    t = tqdm(total=len(input_doc_iter))
+
+    total_lines = 0
+    show_diff_mem(0.5, start)
+    with open(input_file, 'r', encoding='utf-8') as file:
+        total_lines = sum(1 for _ in file)
+    gc.collect()
+    show_diff_mem(1, start)
+
+    print('raw data len ', total_lines)
+    t = tqdm(total=total_lines)
     with Parallel(cleaner, num_jobs=num_jobs) as pfilter:
-        out_doc_iter = pfilter.imap_apply(input_doc_iter)
-        with open(before_debup_file, "w") as fp:   
-            for doc in out_doc_iter:
-                if not doc.is_rejected:                    
+        show_diff_mem(2, start)
+        with open(before_debup_file, "w") as fp:
+            for doc in pfilter.imap_apply(read_yielder(input_file)):
+                if not doc.is_rejected:
                     fp.write(doc.text + "\n")
                     cnt += 1
+                del doc
                 t.update(1)
         t.close()
-    print(cnt)
-   
+    show_diff_mem(4, start)
+    print('end data len: ', cnt)
+    gc.collect()
+    show_diff_mem(5, start)
+    
+
     # ## --- dedup ---
     # print('-- start dedup--')
     # cleaner = Compose([
@@ -201,9 +241,10 @@ def main():
     output_dir = sys.argv[-1]
     print('output_dir...', output_dir)
     token = os.environ['HF_TOKEN']
-    start = 3
+    start = 4
     end = 119
-    num_jobs=20
+    
+    num_jobs=10
     print('start...')
     print(f'start: {start}')
     print(f'end: {end}')
@@ -222,16 +263,20 @@ def main():
                         )
         input_ex_file = input_dir + '/ja_meta/' + zst_file_name
         jsonl_file = os.path.splitext(input_ex_file)[0]
+        show_diff_mem(0, start)
         extract_zst_file(input_ex_file, jsonl_file)
+        show_diff_mem(0.1, start)
         output_file = f'{output_dir}/{i}.jsonl'
 
         print('input...', jsonl_file)
         print('output...', output_file)
         clean(jsonl_file, output_file, num_jobs=num_jobs)
-  
+        gc.collect()
+        show_diff_mem(8, start)
 
 def test():
     clean('./sample2.jsonl', 'sample_output.jsonl')
 
 if __name__ == '__main__':
     main()
+    # test()
