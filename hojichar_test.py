@@ -6,7 +6,7 @@ from typing import Any
 from tqdm import tqdm
 import unicodedata
 import psutil
-
+import argparse
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
 from hojichar.filters.document_filters import JSONLoader
@@ -235,16 +235,27 @@ def clean(input_file, output_file, num_jobs=10):
     # t.close()
     # print('dedup len', cnter)
 
+def get_args():
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('--start', type=int, default=1)
+    parser.add_argument('--end', type=int, default=119)
+    parser.add_argument('--output', type=str)
+    parser.add_argument('--workers', type=int, default=10)
+    args = parser.parse_args()
+    return args
+
+
 def main():
+    args = get_args()
     input_dir = './data'
     # output_dir = './output'
-    output_dir = sys.argv[-1]
+    output_dir = args.output
     print('output_dir...', output_dir)
     token = os.environ['HF_TOKEN']
-    start = 4
-    end = 119
+    start = args.start
+    end = args.end
     
-    num_jobs=10
+    num_jobs=args.workers
     print('start...')
     print(f'start: {start}')
     print(f'end: {end}')
