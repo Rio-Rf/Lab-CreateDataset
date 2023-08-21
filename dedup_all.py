@@ -14,6 +14,9 @@ def read_yielder(input_file):
     with open(input_file) as fp:
         yield fp.readlines()
 
+def empty():
+    return
+
 def run_debup(input_file, output_dir, cleaner):
     print('input_file:',input_file)
 
@@ -27,8 +30,9 @@ def run_debup(input_file, output_dir, cleaner):
     output_fp = open(output_file, 'w')
     
     with open(input_file) as fp:
-        for line in tqdm(fp, total=total_lines):            
-            result = cleaner(line)
+        for line in tqdm(fp, total=total_lines):
+            empty()
+            #result = cleaner(line)
             # if result != "":
             #     output_fp.write(result + "\n")
             # del result
