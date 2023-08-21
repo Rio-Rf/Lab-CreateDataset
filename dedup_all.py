@@ -5,14 +5,18 @@ from os import PathLike
 from typing import Any, Union
 from tqdm import tqdm
 import argparse
+import multiprocessing
+
 
 from hojichar import Compose, document_filters, deduplication, Parallel, Document
 from hojichar.core.filter_interface import Filter
 from hojichar.filters.deduplication import LSHDeduplicator
-    
-def read_yielder(input_file):
-    with open(input_file) as fp:
-        yield fp.readlines()
+
+
+def read_yielder(input_file):    
+    with open(input_file) as fp:        
+        for line in fp.readlines():
+            yield Document(line)
 
 def run_debup(input_file, output_dir, cleaner):
     print('input_file:',input_file)
@@ -21,19 +25,35 @@ def run_debup(input_file, output_dir, cleaner):
         total_lines = sum(1 for _ in file)
     gc.collect()
 
+    # output_file_name = os.path.basename(input_file)
+    # output_file = output_dir + '/' + output_file_name
+    # print('output_file: ', output_file)
+    # output_fp = open(output_file, 'w')
+    
+    # with open(input_file) as fp:
+    #     for line in tqdm(fp, total=total_lines):        
+    #         result = cleaner(line)
+    #         if result != "":
+    #             output_fp.write(result + "\n")
+    #         del result
+    #     gc.collect()
+    # output_fp.close()
+
+
+    num_jobs=10
+    with open(input_file, 'r', encoding='utf-8') as file:
+        total_lines = sum(1 for _ in file)
+
     output_file_name = os.path.basename(input_file)
     output_file = output_dir + '/' + output_file_name
     print('output_file: ', output_file)
-    output_fp = open(output_file, 'w')
-    
-    with open(input_file) as fp:
-        for line in tqdm(fp, total=total_lines):        
-            result = cleaner(line)
-            if result != "":
-                output_fp.write(result + "\n")
-            del result
-        gc.collect()
-    output_fp.close()
+    t = tqdm(total=total_lines)    
+    with Parallel(cleaner, num_jobs=num_jobs) as pfilter, open(output_file, 'w') as output_fp:
+        for doc in pfilter.imap_apply(read_yielder(input_file)):
+            if not doc.is_rejected:
+                output_fp.write(doc.text + "\n")
+            t.update(1)
+    t.close()
 
 
 class Debug(Filter):
@@ -73,16 +93,84 @@ class LSHDeduplicatorWith(LSHDeduplicator):
         super().apply(document)
         self.save_black_list()
         return document
-    pass
+    
+class SharedSet():
+    def __init__(self) -> None:
+        self.lock = multiprocessing.Semaphore(1)        
+        manager = multiprocessing.Manager()
+        self.shared_set = manager.list([])
+
+    def add(self, item):
+        with self.lock:
+            if item not in self.shared_set:
+                self.shared_set.append(item)
+
+    def get(self):
+        with self.lock:
+            return list(self.shared_set)
+
+def recreate_empty_file(file_path):    
+    if os.path.exists(file_path):
+        print('remove...', file_path)
+        os.remove(file_path)
+
+    with open(file_path, 'w') as f:        
+        pass
+
+class LSHDeduplicatorLockWith(LSHDeduplicator):
+    def __init__(self,                 
+                 blacklist_path: Union[str, PathLike],
+                 recreate_blacklist_file: bool = False,
+                 *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.blacklist_path = blacklist_path        
+        self.has_new_seen = False        
+        self.seen = SharedSet()
+        self.blacklist = SharedSet()
+
+        if recreate_blacklist_file:
+            recreate_empty_file(blacklist_path)
+
+        with open(blacklist_path) as fp:
+            for line in fp:
+                lsh = line.strip()
+                self.seen.add(lsh)
+                self.blacklist.add(lsh)
+
+    def save_black_list(self):
+        if not self.has_new_seen:
+            return
+        with open(self.blacklist_path, 'w') as fp:            
+            fp.writelines([v+'\n' for v in self.seen.get()])
+
+    def apply(self, doc):        
+        lshs = doc.dedup_lsh
+        if len(lshs) == 0:
+            assert ValueError(
+                "LSHs for deduplication are not caluculated. Filter \
+                    `GenerateDedupLSH` must be composed before this filter."
+            )
+
+        for lsh in lshs:
+            if lsh in self.seen.get():
+                doc.is_rejected = True
+                self.has_new_seen = True
+                self.blacklist.add(lsh)
+            self.seen.add(lsh)
+        self.save_black_list()
+        return doc
 
 
-def get_cleaner():  
+
+def get_cleaner(blacklist_file, recreate_blacklist_file):
+    shared_set = SharedSet()
     cleaner = Compose([
         document_filters.JSONLoader(key='text'),        
         deduplication.GenerateDedupLSH(),
-        LSHDeduplicatorWith(
-            blacklist_path='./dedup_blacklist.txt',
-            online_dedup=True,
+        LSHDeduplicatorLockWith(
+            shared_set,
+            blacklist_path = blacklist_file,
+            recreate_blacklist_file = recreate_blacklist_file
         ),
         Debug(),
         document_filters.JSONDumper()
@@ -95,6 +183,7 @@ def get_args():
     parser.add_argument('--target_dir', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--blacklist_path', type=str, default='./output/blacklist.txt')
+    parser.add_argument('--recreate_blacklist', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -106,7 +195,7 @@ def main():
  
     print('target', target_dir)
     
-    cleaner = get_cleaner()
+    cleaner = get_cleaner(args.blacklist_path, args.recreate_blacklist)
     filelist = glob.glob(target_dir)
     print('file list len', len(filelist))
     for input_file in filelist:
@@ -114,7 +203,7 @@ def main():
 
 
 def test():
-    cleaner = get_cleaner()
+    cleaner = get_cleaner('./blacklist.txt', recreate_blacklist_file=True)
     input_file = './sample.jsonl'    
     output_dir = './dedup'
     run_debup(input_file, output_dir, cleaner)
@@ -123,5 +212,5 @@ def test():
     run_debup(input_file, output_dir, cleaner)
 
 if __name__ == '__main__':
-    main()
-    # test()
+    # main()
+    test()
