@@ -18,29 +18,13 @@ def read_yielder(input_file):
         for line in fp.readlines():
             yield Document(line)
 
-def run_debup(input_file, output_dir, cleaner):
+def run_dedup(input_file, output_dir, cleaner, num_jobs=10):
     print('input_file:',input_file)
 
     with open(input_file, 'r', encoding='utf-8') as file:
         total_lines = sum(1 for _ in file)
     gc.collect()
-
-    # output_file_name = os.path.basename(input_file)
-    # output_file = output_dir + '/' + output_file_name
-    # print('output_file: ', output_file)
-    # output_fp = open(output_file, 'w')
     
-    # with open(input_file) as fp:
-    #     for line in tqdm(fp, total=total_lines):        
-    #         result = cleaner(line)
-    #         if result != "":
-    #             output_fp.write(result + "\n")
-    #         del result
-    #     gc.collect()
-    # output_fp.close()
-
-
-    num_jobs=10
     with open(input_file, 'r', encoding='utf-8') as file:
         total_lines = sum(1 for _ in file)
 
@@ -172,7 +156,7 @@ def get_cleaner(blacklist_file, recreate_blacklist_file):
             blacklist_path = blacklist_file,
             recreate_blacklist_file = recreate_blacklist_file
         ),
-        Debug(),
+        # Debug(),
         document_filters.JSONDumper()
     ])
     return cleaner
