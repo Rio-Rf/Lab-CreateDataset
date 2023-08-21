@@ -10,6 +10,9 @@ from hojichar import Compose, document_filters, deduplication, Parallel, Documen
 from hojichar.core.filter_interface import Filter
 from hojichar.filters.deduplication import LSHDeduplicator
     
+def read_yielder(input_file):
+    with open(input_file) as fp:
+        yield fp.readlines()
 
 def run_debup(input_file, output_dir, cleaner):
     print('input_file:',input_file)
@@ -24,11 +27,14 @@ def run_debup(input_file, output_dir, cleaner):
     output_fp = open(output_file, 'w')
     
     with open(input_file) as fp:
-        for line in tqdm(fp.readlines(), total=total_lines):
+        t = tqdm(total=total_lines)
+        for line in fp.readlines():
             result = cleaner(line)
             if result != "":
                 output_fp.write(result + "\n")
+            t.update(1)
             del result
+        t.close()
         gc.collect()
     output_fp.close()
 
