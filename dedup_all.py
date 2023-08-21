@@ -252,7 +252,7 @@ def test():
         blacklist = SharedSet(manager)
         cleaner = get_cleaner(
                 blacklist_file='./blacklist.txt',
-                recreate_blacklist_file=False,        
+                recreate_blacklist_file=False,
                 seen=seen,
                 blacklist=blacklist,
             )
@@ -265,5 +265,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
