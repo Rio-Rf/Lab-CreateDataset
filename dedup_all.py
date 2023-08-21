@@ -106,7 +106,7 @@ def main():
     cleaner = get_cleaner()
     filelist = glob.glob(target_dir)
     print('file list len', len(filelist))
-    for input_file in tqdm(total=len(filelist)):
+    for input_file in tqdm(filelist, total=len(filelist)):
         run_debup(input_file, output_dir, cleaner)
 
 
