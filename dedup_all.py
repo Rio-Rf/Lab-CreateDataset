@@ -183,17 +183,17 @@ def main():
     filelist = glob.glob(target_dir)
     print('file list len', len(filelist))
     for input_file in filelist:
-        run_debup(input_file, output_dir, cleaner)
+        run_dedup(input_file, output_dir, cleaner)
 
 
 def test():
     cleaner = get_cleaner('./blacklist.txt', recreate_blacklist_file=True)
     input_file = './sample.jsonl'    
     output_dir = './dedup'
-    run_debup(input_file, output_dir, cleaner)
+    run_dedup(input_file, output_dir, cleaner)
 
     input_file = './sample3.jsonl'
-    run_debup(input_file, output_dir, cleaner)
+    run_dedup(input_file, output_dir, cleaner)
 
 if __name__ == '__main__':
     # main()
