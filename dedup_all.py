@@ -129,8 +129,7 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
     def __init__(self,
                  blacklist_path: Union[str, PathLike],
                  recreate_blacklist_file: bool = False,
-                 *args: Any, **kwargs: Any) -> None:
-        print('a!', blacklist_path)
+                 *args: Any, **kwargs: Any) -> None:        
         super().__init__(*args, **kwargs)
         self.blacklist_path = blacklist_path        
         self.has_new_seen = False        
@@ -225,5 +224,5 @@ def test():
     run_dedup(input_file, output_dir, cleaner)
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
