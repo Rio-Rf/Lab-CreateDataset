@@ -216,7 +216,6 @@ def main():
  
     print('target', target_dir)
     
-    cleaner = get_cleaner(args.blacklist_path, args.recreate_blacklist)
     filelist = glob.glob(target_dir)
     print('file list len', len(filelist))
     with multiprocessing.Manager() as manager:        
