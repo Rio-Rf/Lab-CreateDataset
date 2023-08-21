@@ -106,6 +106,7 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
                  blacklist_path: Union[str, PathLike],
                  recreate_blacklist_file: bool = False,
                  *args: Any, **kwargs: Any) -> None:
+        print('a!', blacklist_path)
         super().__init__(*args, **kwargs)
         self.blacklist_path = blacklist_path        
         self.has_new_seen = False        
@@ -146,13 +147,11 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
 
 
 
-def get_cleaner(blacklist_file, recreate_blacklist_file):
-    shared_set = SharedSet()
+def get_cleaner(blacklist_file, recreate_blacklist_file):    
     cleaner = Compose([
         document_filters.JSONLoader(key='text'),        
         deduplication.GenerateDedupLSH(),
-        LSHDeduplicatorLockWith(
-            shared_set,
+        LSHDeduplicatorLockWith(            
             blacklist_path = blacklist_file,
             recreate_blacklist_file = recreate_blacklist_file
         ),
@@ -187,7 +186,9 @@ def main():
 
 
 def test():
-    cleaner = get_cleaner('./blacklist.txt', recreate_blacklist_file=True)
+    cleaner = get_cleaner(
+        blacklist_file='./blacklist.txt',
+        recreate_blacklist_file=True)
     input_file = './sample.jsonl'    
     output_dir = './dedup'
     run_dedup(input_file, output_dir, cleaner)
@@ -196,5 +197,5 @@ def test():
     run_dedup(input_file, output_dir, cleaner)
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
