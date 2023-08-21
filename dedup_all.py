@@ -30,10 +30,8 @@ def run_debup(input_file, output_dir, cleaner):
         for line in tqdm(fp, total=total_lines):
             result = cleaner(line)
             if result != "":
-                output_fp.write(result + "\n")
-            t.update(1)
-            del result
-        t.close()
+                output_fp.write(result + "\n")            
+            del result        
         gc.collect()
     output_fp.close()
 
