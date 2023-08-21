@@ -27,8 +27,7 @@ def run_debup(input_file, output_dir, cleaner):
     output_fp = open(output_file, 'w')
     
     with open(input_file) as fp:
-        t = tqdm(total=total_lines)
-        for line in fp.readlines():
+        for line in tqdm(fp, total=total_lines):
             result = cleaner(line)
             if result != "":
                 output_fp.write(result + "\n")
