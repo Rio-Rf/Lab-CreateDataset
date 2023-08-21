@@ -226,7 +226,7 @@ def main():
                 seen=seen,
                 blacklist=blacklist,
         )
-        with multiprocessing.Pool(10) as pool:
+        with multiprocessing.Pool(5) as pool:
             args = [(file, output_dir, cleaner) for file in filelist]
             t = tqdm(total=len(args))
             for _ in pool.starmap(run_dedup, args):
