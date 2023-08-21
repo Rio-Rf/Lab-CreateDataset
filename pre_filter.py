@@ -203,37 +203,7 @@ def clean(input_file, output_file, num_jobs=10):
     print('end data len: ', cnt)
     gc.collect()
     show_diff_mem(5, start)
-    
 
-    # ## --- dedup ---
-    # print('-- start dedup--')
-    # cleaner = Compose([
-    #     JSONLoader(key='text'),
-    #     # Debug(),
-    #     deduplication.GenerateDedupLSH(),
-    #     deduplication.LSHDeduplicator(
-    #         online_dedup=True,        
-    #         store_blacklist=True
-    #     ),
-    #     document_filters.JSONDumper()
-    # ])
-
-    # with open(before_debup_file) as fp:
-    #     lines = fp.readlines()
-    
-    # print('cleaned len', len(lines))
-    # t = tqdm(total=len(lines))
-    # cnter = 0
-    # with open(output_file, "w") as fp:
-    #     for line in lines:
-    #         result = cleaner(line)
-    #         t.update(1)
-    #         if result == "":
-    #             continue
-    #         fp.write(result + "\n")
-    #         cnter += 1
-    # t.close()
-    # print('dedup len', cnter)
 
 def get_args():
     parser = argparse.ArgumentParser() 
@@ -261,7 +231,7 @@ def main():
     print(f'end: {end}')
     print(f'num_jobs: {num_jobs}')
 
-    for i in range(start, end):
+    for i in range(start, end+1):
         url = f'https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst'
         print('get...', url)
         zst_file_name=os.path.basename(url)
