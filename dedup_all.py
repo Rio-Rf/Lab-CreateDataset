@@ -18,7 +18,7 @@ def read_yielder(input_file):
         for line in fp.readlines():
             yield Document(line)
 
-def run_dedup(input_file, output_dir, cleaner, num_jobs=10):
+def run_dedup_multi(input_file, output_dir, cleaner, num_jobs=10):
     print('input_file:',input_file)
 
     with open(input_file, 'r', encoding='utf-8') as file:
@@ -39,6 +39,27 @@ def run_dedup(input_file, output_dir, cleaner, num_jobs=10):
             t.update(1)
     t.close()
 
+def run_dedup(input_file, output_dir, cleaner, num_jobs=10):
+    print('input_file:',input_file)
+
+    with open(input_file, 'r', encoding='utf-8') as file:
+        total_lines = sum(1 for _ in file)
+    gc.collect()
+    
+    with open(input_file, 'r', encoding='utf-8') as file:
+        total_lines = sum(1 for _ in file)
+
+    output_file_name = os.path.basename(input_file)
+    output_file = output_dir + '/' + output_file_name
+    print('output_file: ', output_file)
+
+    with tqdm(total=total_lines) as t, open(input_file) as read_fp, open(output_file, 'w') as output_fp:
+        for line in read_fp.readlines():
+            text = cleaner(line)
+            if text != "":
+                output_fp.write(text + "\n")
+            t.update(1)
+
 
 class Debug(Filter):
     def __init__(self, idx = "", *args: Any, **kwargs: Any) -> None:
@@ -54,16 +75,19 @@ class Debug(Filter):
     
 class LSHDeduplicatorWith(LSHDeduplicator):
     def __init__(self, 
-                online_dedup: bool = True,
-                blacklist_path: Union[str, PathLike] = "",
+                blacklist_path: Union[str, PathLike],                
+                recreate_blacklist_file: bool = False,
                 *args: Any, **kwargs: Any) -> None:
         f = open(blacklist_path, 'w')
         f.close()
         super().__init__(
-                online_dedup,
-                blacklist_path,
+                online_dedup = True,
+                blacklist_path = blacklist_path,
                 store_blacklist = True,
                 *args, **kwargs)
+        
+        if recreate_blacklist_file:
+            recreate_empty_file(blacklist_path)
         self.blacklist_path = blacklist_path
 
     def save_black_list(self):
@@ -102,7 +126,7 @@ def recreate_empty_file(file_path):
         pass
 
 class LSHDeduplicatorLockWith(LSHDeduplicator):
-    def __init__(self,                 
+    def __init__(self,
                  blacklist_path: Union[str, PathLike],
                  recreate_blacklist_file: bool = False,
                  *args: Any, **kwargs: Any) -> None:
@@ -151,8 +175,12 @@ def get_cleaner(blacklist_file, recreate_blacklist_file):
     cleaner = Compose([
         document_filters.JSONLoader(key='text'),        
         deduplication.GenerateDedupLSH(),
-        LSHDeduplicatorLockWith(            
-            blacklist_path = blacklist_file,
+        # LSHDeduplicatorLockWith(            
+        #     blacklist_path = blacklist_file,
+        #     recreate_blacklist_file = recreate_blacklist_file
+        # ),
+        LSHDeduplicatorWith(
+            blacklist_file,
             recreate_blacklist_file = recreate_blacklist_file
         ),
         # Debug(),
@@ -182,7 +210,7 @@ def main():
     filelist = glob.glob(target_dir)
     print('file list len', len(filelist))
     for input_file in filelist:
-        run_dedup(input_file, output_dir, cleaner)
+        run_dedup(input_file, output_dir, cleaner, num_jobs=1)
 
 
 def test():
@@ -197,5 +225,5 @@ def test():
     run_dedup(input_file, output_dir, cleaner)
 
 if __name__ == '__main__':
-    main()
-    # test()
+    # main()
+    test()
