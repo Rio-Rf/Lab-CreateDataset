@@ -14,9 +14,6 @@ def read_yielder(input_file):
     with open(input_file) as fp:
         yield fp.readlines()
 
-def empty():
-    return
-
 def run_debup(input_file, output_dir, cleaner):
     print('input_file:',input_file)
 
@@ -30,12 +27,11 @@ def run_debup(input_file, output_dir, cleaner):
     output_fp = open(output_file, 'w')
     
     with open(input_file) as fp:
-        for line in tqdm(fp, total=total_lines):
-            empty()
-            #result = cleaner(line)
-            # if result != "":
-            #     output_fp.write(result + "\n")
-            # del result
+        for line in tqdm(fp, total=total_lines):        
+            result = cleaner(line)
+            if result != "":
+                output_fp.write(result + "\n")
+            del result
         gc.collect()
     output_fp.close()
 
@@ -83,12 +79,12 @@ class LSHDeduplicatorWith(LSHDeduplicator):
 def get_cleaner():  
     cleaner = Compose([
         document_filters.JSONLoader(key='text'),        
-        # deduplication.GenerateDedupLSH(),
-        # LSHDeduplicatorWith(
-        #     blacklist_path='./dedup_blacklist.txt',
-        #     online_dedup=True,
-        # ),
-        # Debug(),
+        deduplication.GenerateDedupLSH(),
+        LSHDeduplicatorWith(
+            blacklist_path='./dedup_blacklist.txt',
+            online_dedup=True,
+        ),
+        Debug(),
         document_filters.JSONDumper()
     ])
     return cleaner
@@ -113,7 +109,7 @@ def main():
     cleaner = get_cleaner()
     filelist = glob.glob(target_dir)
     print('file list len', len(filelist))
-    for input_file in tqdm(filelist, total=len(filelist)):
+    for input_file in filelist:
         run_debup(input_file, output_dir, cleaner)
 
 
