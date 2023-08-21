@@ -168,8 +168,7 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
                     `GenerateDedupLSH` must be composed before this filter."
             )        
         for lsh in lshs:
-            if lsh in self.seen.get():
-            # if lsh in self.seen.get():
+            if lsh in self.seen.get():            
                 doc.is_rejected = True
                 self.has_new_seen = True
                 self.blacklist.add(lsh)
@@ -223,7 +222,7 @@ def main():
         blacklist = SharedSet(manager)
         cleaner = get_cleaner(
                 blacklist_file='./blacklist.txt',
-                recreate_blacklist_file=False,        
+                recreate_blacklist_file=True,
                 seen=seen,
                 blacklist=blacklist,
         )
