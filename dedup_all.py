@@ -79,11 +79,11 @@ class LSHDeduplicatorWith(LSHDeduplicator):
 def get_cleaner():  
     cleaner = Compose([
         document_filters.JSONLoader(key='text'),        
-        deduplication.GenerateDedupLSH(),
-        LSHDeduplicatorWith(
-            blacklist_path='./dedup_blacklist.txt',
-            online_dedup=True,
-        ),
+        # deduplication.GenerateDedupLSH(),
+        # LSHDeduplicatorWith(
+        #     blacklist_path='./dedup_blacklist.txt',
+        #     online_dedup=True,
+        # ),
         # Debug(),
         document_filters.JSONDumper()
     ])
