@@ -101,8 +101,11 @@ def main():
     target_dir = f"{args.target_dir}/*.jsonl"
     output_dir = args.output_dir
  
+    print('target', target_dir)
+    
     cleaner = get_cleaner()
     filelist = glob.glob(target_dir)
+    print('file list len', len(filelist))
     for input_file in tqdm(total=len(filelist)):
         run_debup(input_file, output_dir, cleaner)
 
