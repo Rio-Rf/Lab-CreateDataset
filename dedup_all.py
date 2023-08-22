@@ -18,35 +18,13 @@ def read_yielder(input_file):
         for line in fp.readlines():
             yield Document(line)
 
-def run_dedup_multi(input_file, output_dir, cleaner, num_jobs=10):
-    print('run as multi')
+def run_dedup(input_file, output_dir):
     print('input_file:',input_file)
-
-    with open(input_file, 'r', encoding='utf-8') as file:
-        total_lines = sum(1 for _ in file)
-    gc.collect()
-    
-    with open(input_file, 'r', encoding='utf-8') as file:
-        total_lines = sum(1 for _ in file)
-
-    output_file_name = os.path.basename(input_file)
-    output_file = output_dir + '/' + output_file_name
-    print('output_file: ', output_file)
-    t = tqdm(total=total_lines)    
-    with Parallel(cleaner, num_jobs=num_jobs) as pfilter, open(output_file, 'w') as output_fp:
-        for doc in pfilter.imap_apply(read_yielder(input_file)):
-            if not doc.is_rejected:                
-                output_fp.write(doc.text + "\n")
-            t.update(1)
-    t.close()
-
-def run_dedup(input_file, output_dir, cleaner):
-    print('input_file:',input_file)
-    print('output_dir', output_dir)  
-
-    with open(input_file, 'r', encoding='utf-8') as file:
-        total_lines = sum(1 for _ in file)
-    gc.collect()
+    print('output_dir', output_dir)    
+    cleaner = get_cleaner(  
+                seen=SharedSet(),
+                blacklist=SharedSet()
+            )
 
     output_file_name = os.path.basename(input_file)
     output_file = output_dir + '/' + output_file_name
@@ -57,12 +35,6 @@ def run_dedup(input_file, output_dir, cleaner):
             text = cleaner(line)
             if text != "":
                 output_fp.write(text + "\n")
-    # with tqdm(total=total_lines) as t, open(input_file) as read_fp, open(output_file, 'w') as output_fp:
-    #     for line in read_fp.readlines():
-    #         text = cleaner(line)
-    #         if text != "":
-    #             output_fp.write(text + "\n")
-    #         t.update(1)
 
 
 class Debug(Filter):
@@ -76,37 +48,18 @@ class Debug(Filter):
         # print(document.is_rejected)        
         # print('**'*40)
         return document
-    
-class LSHDeduplicatorWith(LSHDeduplicator):
-    def __init__(self, 
-                blacklist_path: Union[str, PathLike],                
-                recreate_blacklist_file: bool = False,
-                *args: Any, **kwargs: Any) -> None:
-        f = open(blacklist_path, 'w')
-        f.close()
-        super().__init__(
-                online_dedup = True,
-                blacklist_path = blacklist_path,
-                store_blacklist = True,
-                *args, **kwargs)
-        
-        if recreate_blacklist_file:
-            recreate_empty_file(blacklist_path)
-        self.blacklist_path = blacklist_path
 
-    def save_black_list(self):
-        if len(self.blacklist) == 0:
-            return
-
-        with open(self.blacklist_path, 'w') as fp:            
-            fp.writelines([v+'\n' for v in self.blacklist])
-
-    def apply(self, document):
-        super().apply(document)
-        self.save_black_list()
-        return document
-        
 class SharedSet():
+    def __init__(self):
+        self.shared_set = set()
+
+    def add(self, item):
+        self.shared_set.add(item)
+
+    def get(self):
+        return list(self.shared_set)
+
+class SharedSetLocked(SharedSet):
     def __init__(self, manager) -> None:
         self.shared_set = manager.list()
         self.lock = manager.Lock()
@@ -130,29 +83,26 @@ def recreate_empty_file(file_path):
 
 class LSHDeduplicatorLockWith(LSHDeduplicator):
     def __init__(self,
-                 share_seen,
-                 shared_black_list,
-                 blacklist_path: Union[str, PathLike],
+                 share_seen = set(),
+                 shared_black_list = set(),
+                 blacklist_path: Union[str, PathLike] = '',
                  recreate_blacklist_file: bool = False,
-                 *args: Any, **kwargs: Any) -> None:        
+                 *args: Any, **kwargs: Any) -> None: 
         super().__init__(*args, **kwargs)
         self.blacklist_path = blacklist_path
         self.has_new_seen = False
-        # self.seen = set()
-        # self.seen = SharedSet()
-        # self.blacklist = SharedSet()
         self.seen = share_seen
         self.blacklist = shared_black_list
-
 
         if recreate_blacklist_file:
             recreate_empty_file(blacklist_path)
 
-        with open(blacklist_path) as fp:
-            for line in fp:
-                lsh = line.strip()
-                # self.seen.add(lsh)
-                self.blacklist.add(lsh)
+        if blacklist_path != '':
+            with open(blacklist_path) as fp:
+                for line in fp:
+                    lsh = line.strip()
+                    # self.seen.add(lsh)
+                    self.blacklist.add(lsh)
 
     def save_black_list(self):
         if not self.has_new_seen:
@@ -160,7 +110,7 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
         with open(self.blacklist_path, 'w') as fp:            
             fp.writelines([v+'\n' for v in self.seen.get()])
 
-    def apply(self, doc):        
+    def apply(self, doc):
         lshs = doc.dedup_lsh
         if len(lshs) == 0:
             assert ValueError(
@@ -178,63 +128,122 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
 
 
 
-def get_cleaner(blacklist_file, recreate_blacklist_file, seen, blacklist):
+def get_cleaner(seen, blacklist):
     cleaner = Compose([
         document_filters.JSONLoader(key='text'),        
         deduplication.GenerateDedupLSH(),
         LSHDeduplicatorLockWith(
             seen,
             blacklist,
-            blacklist_path = blacklist_file,
-            recreate_blacklist_file = recreate_blacklist_file
         ),
-        # LSHDeduplicatorWith(
-        #     blacklist_file,
-        #     recreate_blacklist_file = recreate_blacklist_file
-        # ),
-        # Debug(),
         document_filters.JSONDumper()
     ])
     return cleaner
 
+def dedup_in_file(filelist, output_dir, num_worker):
+    print('run dedup in file...')    
+    with multiprocessing.Pool(num_worker) as pool:
+        args = [(file, output_dir) for file in filelist]
+        t = tqdm(total=len(args))
+        for _ in pool.starmap(run_dedup, args):
+            t.update(1)
+        t.close()
 
+
+def async_check_dedup(args):
+    doc, target_file, cleaner, blacklist, seen, remove_text = args
+    target_fp = open(target_file)
+    for line in target_fp.readlines():
+        target_doc = cleaner(line)
+            
+        lshs = doc.dedup_lsh
+        target_lshs = target_doc.dedup_lsh
+
+        if len(lshs) == 0:
+            return    
+        for lsh in lshs:
+            if lsh in target_lshs:
+                doc.is_rejected = True
+                blacklist.add(lsh)
+                remove_text.add(doc.text)
+            seen.add(lsh)
+    return doc
+    
+
+def local_compose(line):
+    doc = Document(line)
+    doc = document_filters.JSONLoader(key='text').apply(doc)
+    doc = deduplication.GenerateDedupLSH().apply(doc)    
+    return doc
+
+def dedup_between_files(input_file, filelist, output_dir, num_worker=5):
+    output_file_name = os.path.basename(input_file)
+    output_file = output_dir + '/' + output_file_name
+    output_fp = open(output_file, 'w')
+    
+    with open(input_file, 'r', encoding='utf-8') as file:
+        total_lines = sum(1 for _ in file)
+    gc.collect()
+
+    read_fp = open(input_file)
+    for line in tqdm(read_fp.readlines(), total=total_lines):
+        doc = local_compose(line)
+        manager = multiprocessing.Manager()
+        pool = multiprocessing.Pool(num_worker)
+        blacklist = SharedSetLocked(manager)
+        seen = SharedSetLocked(manager)
+        remove_text = SharedSetLocked(manager)
+
+        args = [(doc, target_file, local_compose, blacklist, seen, remove_text) for target_file in filelist]        
+        is_reject = False
+        for result in pool.imap_unordered(async_check_dedup, args):
+            is_reject = result.is_rejected or result.text == ""
+        if not is_reject:
+            text = {"text": result.text}
+            output_fp.write(str(text) + "\n")        
+        removed_output_file = output_dir + '/removed.jsonl'
+        with open(removed_output_file, 'a') as remove_fp:
+            for v in remove_text.get():
+                text = {"text": v}
+                remove_fp.write(str(text)+'\n')
+        manager.shutdown()
+        pool.close()
+    read_fp.close()
+    
+    
 def get_args():
     parser = argparse.ArgumentParser() 
     parser.add_argument('--target_dir', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
-    parser.add_argument('--blacklist_path', type=str, default='./output/blacklist.txt')
-    parser.add_argument('--recreate_blacklist', action='store_true')
+    parser.add_argument('--in_file', action='store_true')
+    parser.add_argument('--between_file', action='store_true')
+    parser.add_argument('--num_worker', type=int, default=4)
+
+    # parser.add_argument('--blacklist_path', type=str, default='./output/blacklist.txt')
+    # parser.add_argument('--recreate_blacklist', action='store_true')
     args = parser.parse_args()
     return args
-
 
 def main():
     args = get_args()    
     target_dir = f"{args.target_dir}/*.jsonl"
     output_dir = args.output_dir
+    num_worker = args.num_worker
  
     print('target', target_dir)
-    
     filelist = glob.glob(target_dir)
-    print('file list len', len(filelist))
-    with multiprocessing.Manager() as manager:        
-        seen = SharedSet(manager)
-        blacklist = SharedSet(manager)
-        cleaner = get_cleaner(
-                blacklist_file='./blacklist.txt',
-                recreate_blacklist_file=True,
-                seen=seen,
-                blacklist=blacklist,
-        )
-        with multiprocessing.Pool(5) as pool:
-            args = [(file, output_dir, cleaner) for file in filelist]
-            t = tqdm(total=len(args))
-            for _ in pool.starmap(run_dedup, args):
-                t.update(1)
-            t.close()                
+    if args.in_file:
+        print('in file')
+        dedup_in_file(filelist, output_dir, num_worker=num_worker)
+    
+    if args.between_file:
+        print('between file')
+        for file_path in filelist:
+            dedup_between_files(file_path, filelist, output_dir, num_worker=num_worker)
 
 
-def test():   
+def test():
+    num_worker = 4    
     input_file = './sample.jsonl'
     output_dir = './dedup'
     # run_dedup(input_file, output_dir, cleaner)
@@ -244,24 +253,15 @@ def test():
     # run_dedup(input_file, output_dir, cleaner)
     # run_dedup_multi(input_file, output_dir, cleaner, num_jobs=4)
 
-    files = ['./sample.jsonl', './sample3.jsonl']        
-    with multiprocessing.Manager() as manager:        
-        seen = SharedSet(manager)
-        blacklist = SharedSet(manager)
-        cleaner = get_cleaner(
-                blacklist_file='./blacklist.txt',
-                recreate_blacklist_file=False,
-                seen=seen,
-                blacklist=blacklist,
-            )
-        with multiprocessing.Pool(4) as pool:
-            args = [(file, output_dir, cleaner) for file in files]
-            t = tqdm(total=len(args))
-            for _ in pool.starmap(run_dedup, args):
-                t.update(1)
-            t.close()                
+    files = ['./sample.jsonl', './sample3.jsonl']
+    dedup_in_file(files, output_dir, num_worker=3)
+
+    input_file = './sample.jsonl'
+    filelist = ['./sample3.jsonl', './sample4.jsonl']
+    output_dir = "dedup2"
+    dedup_between_files(input_file, filelist, output_dir, num_worker=4)
 
 
 if __name__ == '__main__':
-    main()
-    # test()
+    # main()
+    test()
