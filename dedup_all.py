@@ -151,8 +151,8 @@ def dedup_in_file(filelist, output_dir, num_worker):
 
 
 def async_check_dedup(args):
-    doc, target_file, cleaner, blacklist, seen, remove_text = args
-    target_fp = open(target_file)
+    doc, target_file, cleaner,  = args
+    target_fp = open(target_file)    
     for line in target_fp.readlines():
         target_doc = cleaner(line)
             
@@ -163,11 +163,8 @@ def async_check_dedup(args):
             return    
         for lsh in lshs:
             if lsh in target_lshs:
-                doc.is_rejected = True
-                blacklist.add(lsh)
-                remove_text.add(doc.text)
-            seen.add(lsh)
-    return doc
+                doc.is_rejected = True            
+    return doc    
     
 
 def local_compose(line):
@@ -190,24 +187,27 @@ def dedup_between_files(input_file, filelist, output_dir, num_worker=5):
         doc = local_compose(line)
         manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(num_worker)
-        blacklist = SharedSetLocked(manager)
-        seen = SharedSetLocked(manager)
-        remove_text = SharedSetLocked(manager)
-
-        args = [(doc, target_file, local_compose, blacklist, seen, remove_text) for target_file in filelist]        
+        # blacklist = SharedSetLocked(manager)
+        # seen = SharedSetLocked(manager)
+        # remove_text = SharedSetLocked(manager)        
+        args = [(doc, target_file, local_compose) for target_file in filelist]        
         is_reject = False
         t2 = tqdm(total=len(args))
         for result in pool.imap_unordered(async_check_dedup, args):
-            is_reject = result.is_rejected or result.text == ""
+            ## 1つでもrejectならreject
+            if not is_reject:                
+                is_reject = result.is_rejected or result.text == ""            
             t2.update(1)
+
         t2.close()
         if not is_reject:
-            text = {"text": result.text}
+            text = {"text": doc.text}
             output_fp.write(str(text) + "\n")
-        removed_output_file = output_dir + '/removed.jsonl'
-        with open(removed_output_file, 'a') as remove_fp:
-            for v in remove_text.get():
-                text = {"text": v}
+        if is_reject:
+            ## 削除対象はそこまで数が多くないと仮定して、削除対象はすべて保存
+            removed_output_file = output_dir + '/removed.jsonl'        
+            with open(removed_output_file, 'a') as remove_fp:
+                text = {"text": doc.text}
                 remove_fp.write(str(text)+'\n')
         manager.shutdown()
         pool.close()
@@ -256,15 +256,19 @@ def test():
     # run_dedup(input_file, output_dir, cleaner)
     # run_dedup_multi(input_file, output_dir, cleaner, num_jobs=4)
 
-    files = ['./sample.jsonl', './sample3.jsonl']
-    dedup_in_file(files, output_dir, num_worker=3)
+    # files = ['./sample.jsonl', './sample3.jsonl']
+    # dedup_in_file(files, output_dir, num_worker=3)
 
-    input_file = './sample.jsonl'
-    filelist = ['./sample3.jsonl', './sample4.jsonl']
+    input_file = './sample_input/sample.jsonl'
+    filelist = ['./sample_input/sample3.jsonl', './sample_input/sample4.jsonl']
+    output_dir = "dedup2"
+    dedup_between_files(input_file, filelist, output_dir, num_worker=4)
+
+    input_file = './sample_input/sample5.jsonl'
     output_dir = "dedup2"
     dedup_between_files(input_file, filelist, output_dir, num_worker=4)
 
 
 if __name__ == '__main__':
-    main()
-    # test()
+    # main()
+    test()
