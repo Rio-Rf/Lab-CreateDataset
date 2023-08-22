@@ -152,19 +152,22 @@ def dedup_in_file(filelist, output_dir, num_worker):
 
 def async_check_dedup(args):
     doc, target_file, cleaner,  = args
-    target_fp = open(target_file)    
-    for line in target_fp.readlines():
+    target_fp = open(target_file)
+    print('run async...')
+    for line in target_fp.readlines():        
         target_doc = cleaner(line)
             
         lshs = doc.dedup_lsh
         target_lshs = target_doc.dedup_lsh
 
         if len(lshs) == 0:
-            return    
+            print('lshs empty..., may be error')
+            return doc
         for lsh in lshs:
             if lsh in target_lshs:
-                doc.is_rejected = True            
-    return doc    
+                doc.is_rejected = True
+                return doc
+    return doc
     
 
 def local_compose(line):
