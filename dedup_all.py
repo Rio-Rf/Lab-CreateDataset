@@ -29,12 +29,15 @@ def run_dedup(input_file, output_dir):
     output_file_name = os.path.basename(input_file)
     output_file = output_dir + '/' + output_file_name
     # print('output_file: ', output_file)
-
-    with open(input_file) as read_fp, open(output_file, 'w') as output_fp:        
+    store = []
+    with open(input_file) as read_fp:
         for line in tqdm(read_fp.readlines()):
             text = cleaner(line)
             if text != "":
-                output_fp.write(text + "\n")
+                store.append(text)
+
+    with open(output_file, 'w') as output_fp:        
+        output_fp.write('\n'.join(store)+'\n')
 
 
 class Debug(Filter):
@@ -279,5 +282,5 @@ def test():
 
 
 if __name__ == '__main__':
-    main()
-    # test()
+    # main()
+    test()
