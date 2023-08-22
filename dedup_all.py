@@ -196,11 +196,14 @@ def dedup_between_files(input_file, filelist, output_dir, num_worker=5):
 
         args = [(doc, target_file, local_compose, blacklist, seen, remove_text) for target_file in filelist]        
         is_reject = False
+        t2 = tqdm(total=len(args))
         for result in pool.imap_unordered(async_check_dedup, args):
             is_reject = result.is_rejected or result.text == ""
+            t2.update(1)
+        t2.close()
         if not is_reject:
             text = {"text": result.text}
-            output_fp.write(str(text) + "\n")        
+            output_fp.write(str(text) + "\n")
         removed_output_file = output_dir + '/removed.jsonl'
         with open(removed_output_file, 'a') as remove_fp:
             for v in remove_text.get():
