@@ -198,7 +198,6 @@ def dedup_between_files(input_file, filelist, output_dir, num_worker=5):
             if not is_reject:                
                 is_reject = result.is_rejected or result.text == ""            
             t2.update(1)
-
         t2.close()
         if not is_reject:
             text = {"text": doc.text}
