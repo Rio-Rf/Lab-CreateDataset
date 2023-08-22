@@ -19,8 +19,8 @@ def read_yielder(input_file):
             yield Document(line)
 
 def run_dedup(input_file, output_dir):
-    print('input_file:',input_file)
-    print('output_dir', output_dir)    
+    # print('input_file:',input_file)
+    # print('output_dir', output_dir)    
     cleaner = get_cleaner(  
                 seen=SharedSet(),
                 blacklist=SharedSet()
@@ -28,10 +28,10 @@ def run_dedup(input_file, output_dir):
 
     output_file_name = os.path.basename(input_file)
     output_file = output_dir + '/' + output_file_name
-    print('output_file: ', output_file)
+    # print('output_file: ', output_file)
 
-    with open(input_file) as read_fp, open(output_file, 'w') as output_fp:
-        for line in read_fp.readlines():
+    with open(input_file) as read_fp, open(output_file, 'w') as output_fp:        
+        for line in tqdm(read_fp.readlines()):
             text = cleaner(line)
             if text != "":
                 output_fp.write(text + "\n")
@@ -116,7 +116,7 @@ class LSHDeduplicatorLockWith(LSHDeduplicator):
             assert ValueError(
                 "LSHs for deduplication are not caluculated. Filter \
                     `GenerateDedupLSH` must be composed before this filter."
-            )        
+            )
         for lsh in lshs:
             if lsh in self.seen.get():            
                 doc.is_rejected = True
@@ -141,7 +141,9 @@ def get_cleaner(seen, blacklist):
     return cleaner
 
 def dedup_in_file(filelist, output_dir, num_worker):
-    print('run dedup in file...')    
+    print('run dedup in file...')
+    print('output dir', output_dir)
+    print('num worker', num_worker)
     with multiprocessing.Pool(num_worker) as pool:
         args = [(file, output_dir) for file in filelist]
         t = tqdm(total=len(args))
@@ -151,12 +153,15 @@ def dedup_in_file(filelist, output_dir, num_worker):
 
 
 def async_check_dedup(args):
-    doc, target_file, cleaner,  = args
+    doc, target_file, cleaner  = args
     target_fp = open(target_file)
 
-    for line in tqdm(target_fp.readlines()):
+    # with open(target_file, 'r', encoding='utf-8') as file:
+    #     total_lines = sum(1 for _ in file)
+
+    for line in target_fp.readlines():
         target_doc = cleaner(line)
-            
+        
         lshs = doc.dedup_lsh
         target_lshs = target_doc.dedup_lsh
 
@@ -190,10 +195,11 @@ def dedup_between_files(input_file, filelist, output_dir, num_worker=5):
         doc = local_compose(line)
         manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(num_worker)
+        # progress_dict = manager.dict()
         # blacklist = SharedSetLocked(manager)
         # seen = SharedSetLocked(manager)
-        # remove_text = SharedSetLocked(manager)        
-        args = [(doc, target_file, local_compose) for target_file in filelist]        
+        # remove_text = SharedSetLocked(manager)
+        args = [(doc, target_file, local_compose) for target_file in filelist]
         is_reject = False
         t2 = tqdm(total=len(args))
         for result in pool.imap_unordered(async_check_dedup, args):
@@ -250,7 +256,7 @@ def main():
 def test():
     num_worker = 4    
     input_file = './sample.jsonl'
-    output_dir = './dedup'
+    output_dir = './dedup2'
     # run_dedup(input_file, output_dir, cleaner)
     # run_dedup_multi(input_file, output_dir, cleaner, num_jobs=4)
 
@@ -258,8 +264,9 @@ def test():
     # run_dedup(input_file, output_dir, cleaner)
     # run_dedup_multi(input_file, output_dir, cleaner, num_jobs=4)
 
-    # files = ['./sample.jsonl', './sample3.jsonl']
-    # dedup_in_file(files, output_dir, num_worker=3)
+    files = ['./sample_input/sample.jsonl', './sample_input/sample3.jsonl']
+    dedup_in_file(files, output_dir, num_worker=3)
+    exit(0)
 
     input_file = './sample_input/sample.jsonl'
     filelist = ['./sample_input/sample3.jsonl', './sample_input/sample4.jsonl']
@@ -272,5 +279,5 @@ def test():
 
 
 if __name__ == '__main__':
-    main()
-    # test()
+    # main()
+    test()
