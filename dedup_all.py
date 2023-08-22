@@ -21,7 +21,7 @@ def read_yielder(input_file):
 def run_dedup(input_file, output_dir):
     # print('input_file:',input_file)
     # print('output_dir', output_dir)    
-    cleaner = get_cleaner(  
+    cleaner = get_cleaner(
                 seen=SharedSet(),
                 blacklist=SharedSet()
             )
@@ -279,5 +279,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
