@@ -153,8 +153,8 @@ def dedup_in_file(filelist, output_dir, num_worker):
 def async_check_dedup(args):
     doc, target_file, cleaner,  = args
     target_fp = open(target_file)
-    print('run async...')
-    for line in target_fp.readlines():        
+
+    for line in tqdm(target_fp.readlines()):
         target_doc = cleaner(line)
             
         lshs = doc.dedup_lsh
