@@ -284,7 +284,7 @@ def test():
 
 if __name__ == '__main__':    
     args = get_args()
-    if args.text:
+    if args.test:
         test()
     else:
         main(args)
