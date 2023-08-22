@@ -1,6 +1,7 @@
 import os
 import glob
 import gc
+import sys
 from os import PathLike
 from typing import Any, Union
 from tqdm import tqdm
@@ -232,14 +233,14 @@ def get_args():
     parser.add_argument('--in_file', action='store_true')
     parser.add_argument('--between_file', action='store_true')
     parser.add_argument('--num_worker', type=int, default=4)
+    parser.add_argument('--test', action='store_true')
 
     # parser.add_argument('--blacklist_path', type=str, default='./output/blacklist.txt')
     # parser.add_argument('--recreate_blacklist', action='store_true')
     args = parser.parse_args()
     return args
 
-def main():
-    args = get_args()    
+def main(args):    
     target_dir = f"{args.target_dir}/*.jsonl"
     output_dir = args.output_dir
     num_worker = args.num_worker
@@ -281,6 +282,9 @@ def test():
     dedup_between_files(input_file, filelist, output_dir, num_worker=4)
 
 
-if __name__ == '__main__':
-    # main()
-    test()
+if __name__ == '__main__':    
+    args = get_args()
+    if args.text:
+        test()
+    else:
+        main(args)
