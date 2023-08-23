@@ -31,16 +31,19 @@ def run_dedup(input_file, output_dir):
 
     output_file_name = os.path.basename(input_file)
     output_file = output_dir + '/' + output_file_name
-    # print('output_file: ', output_file)
-    store = []
-    with open(input_file) as read_fp:        
+        
+    BATCH_SIZE = 1000
+    batch = []
+    with open(input_file) as read_fp, open(output_file, 'w') as output_fp:
         for line in tqdm(read_fp, total=total_lines):
             text = cleaner(line)
-            if text != "":
-                store.append(text)
-
-    with open(output_file, 'w') as output_fp:        
-        output_fp.write('\n'.join(store)+'\n')
+            if text:
+                batch.append(text)
+                if len(batch) >= BATCH_SIZE:
+                    output_fp.write('\n'.join(batch) + '\n')
+                    batch.clear()
+        if batch:
+            output_fp.write('\n'.join(batch) + '\n')
 
 
 class Debug(Filter):
