@@ -32,7 +32,7 @@ def run_dedup(input_file, output_dir):
     # print('output_file: ', output_file)
     store = []
     with open(input_file) as read_fp:
-        for line in tqdm(read_fp.readlines()):
+        for line in tqdm(read_fp):
             text = cleaner(line)
             if text != "":
                 store.append(text)
