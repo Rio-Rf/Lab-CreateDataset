@@ -26,13 +26,15 @@ def run_dedup(input_file, output_dir):
                 seen=SharedSet(),
                 blacklist=SharedSet()
             )
+    with open(input_file, 'r', encoding='utf-8') as file:
+        total_lines = sum(1 for _ in file)
 
     output_file_name = os.path.basename(input_file)
     output_file = output_dir + '/' + output_file_name
     # print('output_file: ', output_file)
     store = []
-    with open(input_file) as read_fp:
-        for line in tqdm(read_fp):
+    with open(input_file) as read_fp:        
+        for line in tqdm(read_fp, total=total_lines):
             text = cleaner(line)
             if text != "":
                 store.append(text)
