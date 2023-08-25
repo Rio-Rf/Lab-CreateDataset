@@ -5,3 +5,4 @@ https://github.com/kpu/kenlm/archive/master.zip
 sentencepiece
 git+https://github.com/EleutherAI/lm_dataformat.git@4eec05349977071bf67fc072290b95e31c8dd836
 psutil
+datasets
