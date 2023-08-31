@@ -20,7 +20,7 @@ def compress_file_with_zst(input_path, output_path):
 
 def upload(input_file_path, hf_username, dataset_name):
     zst_file_name = os.path.basename(input_file_path)+'.zst'
-    zst_file_path = f'/tmp/{zst_file_name}'
+    zst_file_path = f'/tmp/dataset/{zst_file_name}'
     with open(zst_file_path, 'w') as _:
         pass
     compress_file_with_zst(input_file_path, zst_file_path)
