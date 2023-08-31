@@ -28,7 +28,7 @@ def upload(input_file_path, hf_username, dataset_name):
     with open(zst_file_path, 'w') as _:
         pass
     compress_file_with_zst(input_file_path, zst_file_path)
-    print('zst_file_path', zst_file_path)
+
     upload_file(
         path_or_fileobj=zst_file_path,
         path_in_repo=zst_file_name,
@@ -52,7 +52,7 @@ def main():
     args = get_args()
     target_dir = f"{args.target_dir}/*.jsonl"
     filelist = glob.glob(target_dir)
-    filelist = list(filelist)[:2]
+    # filelist = list(filelist)[:2]
     for file_path in tqdm(filelist, total=len(filelist)):
         upload(file_path, args.hf_username, args.dataset_name)
 
