@@ -13,8 +13,24 @@ oscarの認証用に環境変数を設定しておく (colab用)
 dedup処理以外を行う
 
 ```
-python pre_filter.py
+python pre_filter.py --start START --end END --output OUTPUT --workers WORKERS
 ```
+
+引数
+- start、end: 処理するファイルのindexを指定。
+- output: フィルタリングされたファイルが出力されるディレクトリ
+- workers: workerの数
+
+
+フィルターでは、以下の文章を取り出すようにする
+
+- 100文字 < 文章 < 50000文字
+- 日本語の文章であること
+- oscarのmeta dataのうち、header, footer, noisy以外のもの
+- 半角や全角のスペースが少ないこと
+- 指定されたNG wordを含まないこと
+- KenLMのスコア
+
 
 `https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst`をダウンロード
 iは 1から119まで
@@ -26,10 +42,20 @@ iは 1から119まで
 ### dedup
 pre_filterで処理したすべてのファイルを見て重複削除を行う
 
+pythonだと処理に時間がかかりすぎるのでC++に移行
+
+https://github.com/if001/dedup_sentence
+
 
 ### upload
 hfにupload
 
+```
+python upload_to_hf.py [-h] --start START --end END --target_dir TARGET_DIR --hf_username HF_USERNAME --dataset_name DATASET_NAME
+```
+
+TARGET_DIRにあるファイルをuploadする。ファイルは1.jsonl、2.jsonl...を想定。
+startとendでファイルを指定する。
 
 
 ## format
