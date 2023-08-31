@@ -27,10 +27,11 @@ def upload(input_file_path, hf_username, dataset_name):
     with open(zst_file_path, 'w') as _:
         pass
     compress_file_with_zst(input_file_path, zst_file_path)
-    
+    print('zst_file_path', zst_file_path)
     # YOUR_HF_USERNAME = "if001"
     # YOUR_DATASET_NAME = "oscar_2023_filtered"    
-    dataset = load_dataset(zst_file_path, split='train', save_infos=True)
+    # dataset = load_dataset(zst_file_path, split='train', save_infos=True)
+    dataset = load_dataset("json", data_files=zst_file_path, split='train', save_infos=True)
     dataset.save_to_disk(f"datasets/{hf_username}/{dataset_name}/{zst_file_name}")
 
 def get_args():
