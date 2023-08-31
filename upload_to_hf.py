@@ -1,10 +1,7 @@
 import os
 import zstandard as zstd
-from datasets import load_dataset
 from huggingface_hub import upload_file
-import glob
 import argparse
-from tqdm import tqdm
 
 def compress_file_with_zst(input_path, output_path):
     with open(input_path, 'rb') as f_in:
@@ -38,10 +35,14 @@ def upload(input_file_path, hf_username, dataset_name):
 
 def get_args():
     parser = argparse.ArgumentParser() 
+    parser.add_argument('--start', type=int, required=True)
+    parser.add_argument('--end', type=int, required=True)
     parser.add_argument('--target_dir', type=str, required=True)
     parser.add_argument('--hf_username', type=str, required=True)
     parser.add_argument('--dataset_name', type=str, required=True)
     args = parser.parse_args()
+    print(args.start)
+    print(args.end)
 
     print(args.target_dir)
     print(args.hf_username)
@@ -50,11 +51,9 @@ def get_args():
 
 def main():
     args = get_args()
-    target_dir = f"{args.target_dir}/*.jsonl"
-    filelist = glob.glob(target_dir)
-    # filelist = list(filelist)[:2]
-    for file_path in tqdm(filelist, total=len(filelist)):
-        upload(file_path, args.hf_username, args.dataset_name)
+    for i in range(args.start, args.end):
+        file_path = f"{args.target_dir}/{i}.jsonl"
+        upload(file_path, args.hf_username, args.dataset_name)        
 
 
 if __name__ == '__main__':
