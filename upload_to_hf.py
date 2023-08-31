@@ -1,6 +1,7 @@
 import os
 import zstandard as zstd
 from datasets import load_dataset
+from huggingface_hub import upload_file
 import glob
 import argparse
 from tqdm import tqdm
@@ -28,11 +29,12 @@ def upload(input_file_path, hf_username, dataset_name):
         pass
     compress_file_with_zst(input_file_path, zst_file_path)
     print('zst_file_path', zst_file_path)
-    # YOUR_HF_USERNAME = "if001"
-    # YOUR_DATASET_NAME = "oscar_2023_filtered"    
-    # dataset = load_dataset(zst_file_path, split='train', save_infos=True)
-    dataset = load_dataset("json", data_files=zst_file_path, split='train', save_infos=True)
-    dataset.save_to_disk(f"datasets/{hf_username}/{dataset_name}/{zst_file_name}")
+    upload_file(
+        path_or_fileobj=zst_file_path,
+        path_in_repo=zst_file_name,
+        repo_id=f"{hf_username}/{dataset_name}",
+        repo_type="dataset"
+    )
 
 def get_args():
     parser = argparse.ArgumentParser() 
