@@ -9,8 +9,11 @@ oscarの認証用に環境変数を設定しておく (colab用)
 `%env HF_TOKEN=`
 
 
+### pre_filter
+dedup処理以外を行う
+
 ```
-python hojichar_test.py
+python pre_filter.py
 ```
 
 `https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst`をダウンロード
@@ -19,6 +22,13 @@ iは 1から119まで
 `./data` 以下にダウンロードしたzst、解凍後のjsonlが保存される
 `./output` 以下に処理されたファイルが保存される
 
+
+### dedup
+pre_filterで処理したすべてのファイルを見て重複削除を行う
+
+
+### upload
+hfにupload
 
 
 

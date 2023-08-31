@@ -44,7 +44,7 @@ def main():
     args = get_args()
     target_dir = f"{args.target_dir}/*.jsonl"
     filelist = glob.glob(target_dir)
-
+    filelist = list(filelist)[:2]
     for file_path in tqdm(filelist, total=len(filelist)):
         upload(file_path, args.hf_username, args.dataset_name)
 
