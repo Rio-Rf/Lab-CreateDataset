@@ -160,7 +160,7 @@ def clean(input_file, output_file, num_jobs=10):
 
     cleaner = Compose([
         OscarJSONLoader(key=key, metadata_keys=['quality_warnings']),
-        document_filters.DocumentLengthFilter(min_doc_len=100, max_doc_len=50000),
+        document_filters.DocumentLengthFilter(min_doc_len=500, max_doc_len=50000),
         document_filters.AcceptJapanese(),
         FilterByQualityWarnings(),
         SpaceFilter(),
