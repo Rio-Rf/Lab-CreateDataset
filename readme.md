@@ -1,129 +1,40 @@
-# readme
-hojicharをoscarに対して動かしてみたサンプル
+# 概要
+hojicharをoscarに対して動かして、oscarの続きを生成させて人間が作成したテキストとLLM生成テキストから成る日本語データセットを作成した
 
-https://github.com/HojiChar/HojiChar
+https://github.com/if001/HojiChar_OSCAR_sample/tree/0.0.4
 
-## run
-
-oscarの認証用に環境変数を設定しておく (colab用)
-`%env HF_TOKEN=`
-
-
-### pre_filter
-dedup処理以外を行う
-
+## 各種ファイルについて
+### pre_filter.py
 ```
 python pre_filter.py --start START --end END --output OUTPUT --workers WORKERS
 ```
-
 引数
 - start、end: 処理するファイルのindexを指定。
 - output: フィルタリングされたファイルが出力されるディレクトリ
 - workers: workerの数
 
-
 フィルターでは、以下の文章を取り出すようにする
 
-- 100文字 < 文章 < 50000文字
+- 500文字 < 文章 < 50000文字
 - 日本語の文章であること
 - oscarのmeta dataのうち、header, footer, noisy以外のもの
 - 半角や全角のスペースが少ないこと
 - 指定されたNG wordを含まないこと
 - KenLMのスコア
-
-
-`https://huggingface.co/datasets/oscar-corpus/OSCAR-2301/resolve/main/ja_meta/ja_meta_part_{i}.jsonl.zst`をダウンロード
-iは 1から119まで
-
-`./data` 以下にダウンロードしたzst、解凍後のjsonlが保存される
-`./output` 以下に処理されたファイルが保存される
-
-
-### dedup
-pre_filterで処理したすべてのファイルを見て重複削除を行う
-
-pythonだと処理に時間がかかりすぎるのでC++に移行
-
-https://github.com/if001/dedup_sentence
-
-
-### upload
-hfにupload
-
+### oscar_generate_text.py
 ```
-python upload_to_hf.py [-h] --start START --end END --target_dir TARGET_DIR --hf_username HF_USERNAME --dataset_name DATASET_NAME
+python oscar_generate_text.py
 ```
-
-TARGET_DIRにあるファイルをuploadする。ファイルは1.jsonl、2.jsonl...を想定。
-startとendでファイルを指定する。
-
-
-## format
-oscarのデータでは、以下の用にcontentに本文が入る
-
-```json
-{
-	"content": "本文",
-	"warc_headers": {
-		"warc-refers-to": "**********",
-		"content-type": "text/plain",
-		"warc-date": "2022-12-07T03:09:41Z",
-		"content-length": "414",
-		"warc-target-uri": "https://****",
-		"warc-type": "conversion",
-		"warc-record-id": "<urn:uuid:00000000-0000-0000-0000-000000000000>",
-		"warc-identified-content-language": "jpn,eng",
-		"warc-block-digest": "sha1:DGDH6QXEPQ5EG3KJYFUYWMLFDJCOJNHJ"
-	},
-	"metadata": {
-		"identification": {
-			"label": "ja",
-			"prob": 1.0000107
-		},
-		"harmful_pp": 267.7608,
-		"tlsh": "tlsh:T14FD97CE06144B532E71071241655D31D4D0039515F14609944F8D755E53F060F9E0E3F4A736D918B9C651F001193A52E10FC232BDC4BE4B71335047F8038A660F5EE416CFD",
-		"quality_warnings": [
-			"tiny"
-		],
-		"categories": null,
-		"sentence_identifications": [
-			{
-				"label": "ja",
-				"prob": 1.0000107
-			}
-		]
-	}
-}
-{
-	"content": "本文",
-	"warc_headers": {
-		"warc-refers-to": "**********",
-		"content-type": "text/plain",
-		"warc-date": "2022-12-07T03:09:41Z",
-		"content-length": "414",
-		"warc-target-uri": "https://****",
-		"warc-type": "conversion",
-		"warc-record-id": "<urn:uuid:00000000-0000-0000-0000-000000000000>",
-		"warc-identified-content-language": "jpn,eng",
-		"warc-block-digest": "sha1:DGDH6QXEPQ5EG3KJYFUYWMLFDJCOJNHJ"
-	},
-	"metadata": {
-		"identification": {
-			"label": "ja",
-			"prob": 1.0000107
-		},
-		"harmful_pp": 267.7608,
-		"tlsh": "tlsh:T14FD97CE06144B532E71071241655D31D4D0039515F14609944F8D755E53F060F9E0E3F4A736D918B9C651F001193A52E10FC232BDC4BE4B71335047F8038A660F5EE416CFD",
-		"quality_warnings": [
-			"tiny"
-		],
-		"categories": null,
-		"sentence_identifications": [
-			{
-				"label": "ja",
-				"prob": 1.0000107
-			}
-		]
-	}
-}
+- OSCARコーパスの最初の50トークンの続きを作成する
+- 500文字以上で出力するように試行錯誤したが実際は250文字以上程度になった
+- APIの接続が切れて中断されることがあるので途中から実行するコードを用意した
+### merge_jsonl.py
 ```
+python merge_jsonl.py  
+```
+- 途中から実行した際にそれぞれの出力を結合する
+### filter_jsonl.py
+```
+python filter_jsonl.py  
+```
+- field名を指定して最低文字数制限とキーワード制限をかける
