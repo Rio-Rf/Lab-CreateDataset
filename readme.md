@@ -1,7 +1,11 @@
 # 概要
-hojicharをoscarに対して動かして、oscarの続きを生成させて人間が作成したテキストとLLM生成テキストから成る日本語データセットを作成した
+#### 人間が作成したテキスト(OSCAR)とLLM生成テキスト(Gpt-3.5 Turbo)から成る日本語データセットを作成した
 
 https://github.com/if001/HojiChar_OSCAR_sample/tree/0.0.4
+
+#### LLMで生成された日本語テキストの検出性能の検証のために作成した
+
+https://github.com/Rio-Rf/Lab-AITextDetection
 
 ## 各種ファイルについて
 ### pre_filter.py
